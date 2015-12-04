@@ -107,8 +107,6 @@ class Autoloader {
 		$name = str_replace( self::$namespaceDomain, "", $class );
 		$pathFile = self::$basePath . str_replace('\\', DIRECTORY_SEPARATOR, $name) . ".php";
 
-		//var_dump(array("0" => $class, "1" => self::$namespaceDomain, "2" => $name, "3" => $pathFile));
-
 		if(file_exists($pathFile))
 			require_once($pathFile);
 		else

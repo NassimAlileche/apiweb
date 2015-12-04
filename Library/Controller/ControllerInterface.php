@@ -6,7 +6,7 @@ namespace apiweb\Library\Controller;
  *
  *
  */
-interface iController {
+interface ControllerInterface {
 
     public function get($param);
     

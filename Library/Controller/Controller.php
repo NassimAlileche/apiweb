@@ -6,7 +6,7 @@ namespace apiweb\Library\Controller;
  *
  *
  */
-abstract class Controller implements iController {
+abstract class Controller implements ControllerInterface {
     
     /**
      * Résultat renvoyé par l'API

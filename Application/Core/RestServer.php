@@ -1,6 +1,7 @@
 <?php
 
 namespace apiweb\Application\Core;
+use apiweb\Library\Response\ServerResponse as ServerResponse;
 
 /**
  *
@@ -9,35 +10,55 @@ namespace apiweb\Application\Core;
  */
 class RestServer {
 
+	const NS_SEPARATOR = '\\';
+
+	/**
+	 * Instance de la classe du service interrogé 
+	 * @var \class
+	 */
+	private $service = null;
+
 	/**
 	 * Nom du service interrogé
 	 * @var string
 	 */
-	private $service;
+	private $serviceName;
 
 	/**
-	 * Nom de domaine racine des services
+	 * Nom de domaine racine des services disponibles
 	 * @var string
 	 */
 	private $serviceBaseNamespace;
+
+	/**
+	 * Chemin des fichiers des services
+	 * @var string
+	 */
+	private $serviceFileDir;
+
+	/**
+	 * Nom de la méthode du service interrogé
+	 * @var string
+	 */
+	private $serviceClassMethod = null;
 
 	/**
 	 * Nom de la méthode HTTP employée
 	 * @var string
 	 */
 	private $httpMethod;
-	
+
 	/**
-	 * Nom de la méthode du service interrogé
+	 * URL de requête du client
 	 * @var string
 	 */
-	private $serviceClassMethod;
+	private $queryUrl;
 	
 	/**
-	 * Liste des paramètres de la requête
+	 * Liste des paramètres en GET de la requête du client
 	 * @var array
 	 */
-	private $requestParams;
+	private $queryUrlParams;
 	
 	/**
 	 * Données de requête réceptionnées par le serveur REST (nom du service + paramètres de requête)
@@ -60,7 +81,7 @@ class RestServer {
 	private $clientHttpAccept;
 	
 	/**
-	 * Résultat renvoyé par le serveur REST
+	 * Résultat renvoyé au format JSON par le serveur REST
 	 * @var object \stdClass
 	 */
 	private $json;
@@ -70,12 +91,6 @@ class RestServer {
 	 * @var string
 	 */
 	private $mode;
-
-	/**
-	 * Chemin racine des ressources
-	 * @var string
-	 */
-	private $rootDir = null;
 
 	/**
 	 * Liste des codes d'erreur HTTP possibles. Devrait être une constante.
@@ -157,60 +172,104 @@ class RestServer {
 	);
 
 	/**
+	 * Setter de la classe du service demandé
 	 *
+	 * @param 	string 		$serviceName 	Nom du service
 	 *
+	 * @return 	void
 	 */
-	private function setStatusCode($code) {
-		if (function_exists('http_response_code')) {
-			http_response_code($code);
-		} else {
-			$protocol = $_SERVER['SERVER_PROTOCOL'] ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0';
-			$message  = "{$code} " . $this->getHttpResponseCodeMessage($code);
-			header("$protocol $message");
-		}
+	private function setService($serviceName) {
+		$this->setServiceName($serviceName);
 	}
 
 	/**
+	 *  Getter de la classe du service demandé
 	 *
-	 *
+	 *  @return \service_class | null
 	 */
-	private function setRootDir() {
-		if($this->rootDir == null) {
-			$dir = dirname(str_replace($_SERVER['DOCUMENT_ROOT'], '', $_SERVER['SCRIPT_FILENAME']));
-			if($dir == '.')
-				$dir = '/';
-			else {
-				// Rajouter un '/' à la fin du nom du répertoire
-				if (substr($dir, -1) != '/')
-					$dir .= '/';
-				// Rajouter un '/' au début du nom du répertoire
-				if (substr($dir, 0, 1) != '/')
-					$dir = '/' . $dir;
-			}
-			$this->rootDir = $dir;
-		}
+	public function getService() {
+		return $this->service;
 	}
 
 	/**
+	 * Setter du nom du service demandé
 	 *
+	 * @param 	string 		$serviceName 	Nom du service
 	 *
+	 * @return 	void
 	 */
-	public function getRootDir() {
-		if($this->rootDir == null)
-			$this->setRootDir();
-
-		return $this->rootDir;
+	private function setServiceName($serviceName) {
+		$this->serviceName = $serviceName;
 	}
 
 	/**
+	 *  Getter du nom du service demandé
 	 *
-	 *
+	 *  @return string
 	 */
-	public function getHttpResponseCodeMessage($code) {
-		$code = (string)$code;
-		return (array_key_exists($code, $this->httpResponseCodes))? $this->httpResponseCodes[$code] : $this->httpResponseCodes['0'];
+	public function getServiceName() {
+		return $this->service;
 	}
 
+	/**
+	 * Setter du namespace de base
+	 *
+	 * @param 	string 		$serviceBaseNamespace 	Namespace de base
+	 *
+	 * @return 	void
+	 */
+	private function setServiceBaseNamespace($serviceBaseNamespace) {
+		$this->serviceBaseNamespace = $serviceBaseNamespace;
+	}
+
+	/**
+	 *  Getter du namespace de base
+	 *
+	 *  @return string
+	 */
+	public function getServiceBaseNamespace() {
+		return $this->serviceBaseNamespace;
+	}
+
+	/**
+	 * Setter du chemin des fichiers des services
+	 *
+	 * @param 	string 		$serviceFileDir 	Chemin
+	 *
+	 * @return 	void
+	 */
+	private function setServiceFileDir($serviceFileDir) {
+		$this->serviceFileDir = $serviceFileDir;
+	}
+
+	/**
+	 *  Getter du chemin des fichiers des services
+	 *
+	 *  @return string
+	 */
+	public function getServiceFileDir() {
+		return $this->serviceFileDir;
+	}
+
+	/**
+	 * Setter de la méthode de la classe $serviceName
+	 *
+	 * @param 	string 		$serviceClassMethod 	Chemin
+	 *
+	 * @return 	void
+	 */
+	private function setServiceClassMethod($serviceClassMethod) {
+		$this->serviceClassMethod = $serviceClassMethod;
+	}
+
+	/**
+	 *  Getter de la méthode de la classe $serviceName
+	 *
+	 *  @return string
+	 */
+	public function getServiceClassMethod() {
+		return $this->serviceClassMethod;
+	}
 	/**
 	 *
 	 *
@@ -218,137 +277,39 @@ class RestServer {
 	public function __construct($mode = "debug") {
 
 		
-		header("Content-type: application/json;application/x-www-form-urlencoded;charset=utf-8");
+		header("Content-type: application/json;application/x-www-form-urlencoded;");
 		header("Content-Length: 4800");
 		header("Cache-Control: no-cache, must-revalidate");
 		header("Expires: 0");
 
 		// Initilialisation de l'objet json représentant la réponse à la requête du client 
 		$this->json = new \stdClass();
-		$this->json->response = "";
+		$this->json->response                = "";
 		$this->json->httpResponseCode        = 200;
 		$this->json->httpResponseCodeMessage = $this->getHttpResponseCodeMessage(200);
-		$this->json->apiError        = false;
-		$this->json->apiErrorMessage = "";
-		$this->json->serverError 		= false;
-		$this->json->serverErrorMessage = "";
+		$this->json->apiError                = false;
+		$this->json->apiErrorMessage         = "";
+		$this->json->serverError 		     = false;
+		$this->json->serverErrorMessage      = "";
 
 		// Nom de domaine racine des services autorisés à être interrogé
-		$this->serviceBaseNamespace = "apiweb\\Application\\Controllers";
-
+		$this->setServiceBaseNamespace("apiweb\Application\Controllers");
+		// Répertoire des services
+		$this->setServiceFileDir(APIWEB_FS_ROOT . "Application/Controllers/"); 
 		// Environnement d'utilisation du webservice
 		$this->mode = (strtolower($mode) == "debug" || strtolower($mode) == "production")? strtolower($mode) : "debug";
-
 		// Initialisation du conteneur des données de requête du client
 		$this->data = array();
-
+		// Chemin URI normalisé, obtenu en supprimant les slashs aux extrémités
+		$this->queryUrl         = $this->normalizeUrlPath( trim($_SERVER["REQUEST_URI"]) );
+		// Partie de l'URI correspondant à des paramères supplémentaires de filtrage transmis dans l'URI
+		$this->queryUrlParams   = preg_replace("/^.*\?/i", "", $this->queryUrl);
+		// Verbe HTTP
 		$this->httpMethod 		= strtoupper($_SERVER["REQUEST_METHOD"]);
 		$this->clientUserAgent 	= $_SERVER["HTTP_USER_AGENT"];
 		$this->clientHttpAccept = $_SERVER["HTTP_ACCEPT"];
 
-		var_dump("rootdir : {$this->getRootDir()}");
-
-		var_dump($this->httpMethod, $this->clientUserAgent, $this->clientHttpAccept);
-
-		// On réceptionne les données de requête suivant la méthode HTTP employée
-		switch($this->httpMethod) {
-			case 'GET' : 
-				$this->data = $_GET; 
-				break;
-			
-			case 'POST'  :
-			case 'PUT'   :
-			case 'DELETE':
-				$body = file_get_contents("php://input");
-				//var_dump($body);
-				parse_str($body, $this->data); 
-				break;
-			
-			default :
-				$this->showError(405, "La méthode HTTP {$this->httpMethod} n'existe pas ou son emploi n'est pas permis.");
-		}
-
-		if(isset($this->data["service"])) {
-
-			$serviceName = $this->data["service"];
-
-			$serviceClassFullName = "\\" . $this->serviceBaseNamespace . "\\" . $serviceName;
-			$serviceClassFile     = str_replace("Public/index.php", "Application/Controllers/", $_SERVER["SCRIPT_FILENAME"]) . $serviceName . ".php";
-
-			//var_dump($serviceName, $serviceClassFullName, $serviceClassFile);
-
-			// On vérifie que le service demandé existe ou pas
-			if(!class_exists($serviceClassFullName) || !file_exists($serviceClassFile)) { 
-				$this->showError( 404, "Le service {$serviceName} n'existe pas : " . $serviceClassFullName . ", " . $serviceClassFile );
-			}
-			else {
-				$this->service = new $serviceClassFullName(); 
-			}
-
-			$this->serviceClassMethod = strtolower( $this->httpMethod );
-
-			if(!method_exists($this->service, $this->serviceClassMethod)) {
-				$this->showError(404, "La méthode {$this->serviceClassMethod} pour le service {$serviceName} n'existe pas.");
-			}
-
-			unset($this->data["service"]);
-			$this->requestParams = $this->data;
-		}
-		else {
-			$this->showError(404, "Le paramètre de requête service est manquant.");
-		}
-
 	}
-
-	/**
-	 * 	Méthode showError($message)
-	 *
-	 * 	Affiche les messages d'erreur du serveur
-	 *
-	 * 	@param 		string 		$message 		[Messages d'erreurs du serveur]
-	 * 	@return 	void
-	 *
-	 */
-	private function showError($code, $message) {
-		$this->setHttpResponseCodeInfo($code);
-		$this->json->serverError        = true;
-		$this->json->serverErrorMessage = $message;
-		exit;
-	}
-
-	/**
-	 * 	Méthode handle()
-	 *
-	 * 	Met en forme le résultat renvoyé par l'API
-	 *
-	 * 	@param
-	 * 	@return 	void
-	 *
-	 */
-	/*
-	 * 		key=value&key=value
-	 * 		array(key->value, key->value)
-	 * 		
-	 * 		PUT http(s)://url/server.php 	body:method=data&oldWord=toto&newWord=titi
-	 */
-	public function handle() {
-		$result = call_user_func(array($this->service, $this->serviceClassMethod), $this->requestParams);
-		$this->json->response = $result->response;
-		$this->json->apiError = $result->apiError;
-		$this->json->apiErrorMessage = $result->apiErrorMessage;
-		//exit;
-	}
-
-	/**
-	 *
-	 *
-	 */
-	public function setHttpResponseCodeInfo($code) {
-		$this->setStatusCode($code);
-		$this->json->httpResponseCode        = $code;
-		$this->json->httpResponseCodeMessage = $this->getHttpResponseCodeMessage($code);
-	}
-
 
 	/**
 	 * 	Méthode __destruct()
@@ -373,4 +334,225 @@ class RestServer {
 		echo json_encode($this->json, JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK | JSON_UNESCAPED_UNICODE);
 	}
 
+	/**
+	 *
+	 *
+	 */
+	public function handle() {
+
+		//var_dump($this->queryUrl, $this->queryUrlParams);
+
+		// On réceptionne les données de requête suivant la méthode HTTP employée
+		switch($this->httpMethod) {
+			case 'GET' : 
+				$this->data = $_GET; 
+				break;
+			case 'POST'  :
+			case 'PUT'   :
+			case 'DELETE':
+				$body = file_get_contents("php://input");
+				var_dump("{$this->httpMethod} body :", $body);
+				parse_str($body, $this->data); 
+				break;
+			default :
+				$this->setServerErrorMessage(405, "La méthode HTTP {$this->httpMethod} n'existe pas ou son utilisation est interdite.");
+		}
+
+		$this->handleByGETParameters();
+		//$this->handleByURIParsing();
+
+		$this->setResponse();
+	}
+
+	/**
+	 *
+	 *
+	 */
+	private function handleByGETParameters() {
+
+		// Requête du type /url/rest/api/endpoint?service=nomservice&param1=value1&param2=value2
+		if(isset($this->data["service"])) {
+			$serviceName = $this->data["service"];
+
+			$serviceClassFullName = self::NS_SEPARATOR . $this->serviceBaseNamespace . self::NS_SEPARATOR . $serviceName;
+			$serviceClassFile     = $this->serviceFileDir . $serviceName . ".php";
+
+			// On vérifie que le service demandé existe ou pas
+			if(!class_exists($serviceClassFullName) || !file_exists($serviceClassFile)) { 
+				//var_dump(class_exists($serviceClassFullName), file_exists($serviceClassFile));
+				$this->setServerErrorMessage( 404, "Le service {$serviceName} n'existe pas." );
+			}
+			else {
+				$this->service = new $serviceClassFullName(); 
+			}
+
+			$this->serviceClassMethod = strtolower( $this->httpMethod );
+
+			if(!method_exists($this->service, $this->serviceClassMethod)) {
+				$this->setServerErrorMessage(404, "La méthode {$this->serviceClassMethod} pour le service {$serviceName} n'existe pas.");
+			}
+
+			unset($this->data["service"]);
+			$this->queryUrlParams = $this->data;
+		}
+		else {
+			$this->setServerErrorMessage(404, "Le paramètre de requête service est manquant.");
+		}
+	}
+
+	/**
+	 *
+	 *
+	 */
+	private function handleByURIParsing() {
+
+		$parts = explode('/', $this->queryUrl);
+		if($parts[0] == "apiweb") {
+			array_splice($parts, 0, 1);
+		}
+
+		// Schema
+		$data_scheme = array(
+			"services" => "",
+			"operation" => "", 
+			"id" => "",
+			"other" => ""
+		);
+
+		if(isset($parts[0])) {
+			$data_scheme["services"] = $parts[0];
+			array_splice($parts, 0, 1);
+		}
+		else {
+			$this->setServerErrorMessage(404, "Le premier paramètre doit correspondre à un service à interroger");
+		}
+		
+		if(isset($parts[0])) {
+			$data_scheme["operation"] = $parts[0];
+			array_splice($parts, 0, 1);
+		}
+		else {
+			$this->setServerErrorMessage(404, "Le deuxième paramètre doit correspondre à une opération à effectuer sur le service '{$data_scheme["services"]}'");
+		}
+
+		if(isset($parts[0])) {
+			$data_scheme["id"] = $parts[0];
+			array_splice($parts, 0, 1);
+		}
+
+		if(!empty($parts)) {
+			$data_scheme["other"] = $parts;
+		}
+
+		$serviceName = $data_scheme["services"];
+
+		$serviceClassFullName = self::NS_SEPARATOR . $this->serviceBaseNamespace . self::NS_SEPARATOR . $serviceName;
+		$serviceClassFile     = $this->serviceFileDir . $serviceName . ".php";
+
+		//var_dump($serviceName, $serviceClassFullName, $serviceClassFile);
+
+		// On vérifie que le service demandé existe ou pas
+		if(!class_exists($serviceClassFullName) || !file_exists($serviceClassFile)) { 
+			//var_dump(class_exists($serviceClassFullName), file_exists($serviceClassFile));
+			$this->setServerErrorMessage( 404, "Le service {$serviceName} n'existe pas." );
+		}
+		else {
+			$this->service = new $serviceClassFullName(); 
+		}
+
+		$this->serviceClassMethod = strtolower( $this->httpMethod );
+
+		var_dump($data_scheme);
+	}
+
+	/**
+	 * 	Méthode setResponse()
+	 *
+	 * 	Met en forme le résultat renvoyé par l'API
+	 *
+	 * 	@param
+	 * 	@return 	void
+	 *
+	 */
+	public function setResponse() {
+
+		if($this->service !== null && $this->serviceClassMethod !== null) {
+			$result = call_user_func( array($this->service, $this->serviceClassMethod), $this->queryUrlParams );
+			$this->json->response = $result->response;
+			$this->json->apiError = $result->apiError;
+			$this->json->apiErrorMessage = $result->apiErrorMessage;
+			//exit;
+		}
+		else {
+			$this->setServerErrorMessage(500, "La requête ne peut pas être traitée.");
+		}
+	}
+
+
+	/**
+	 * 	Méthode setServerErrorMessage($message)
+	 *
+	 * 	Affiche les messages d'erreur du serveur
+	 *
+	 * 	@param 		string 		$message 		[Messages d'erreurs du serveur]
+	 * 	@return 	void
+	 *
+	 */
+	private function setServerErrorMessage($code, $message) {
+		$this->setHttpResponseCodeInfo($code);
+		$this->json->serverError        = true;
+		$this->json->serverErrorMessage = $message;
+		exit;
+	}
+
+	/**
+	 *
+	 *
+	 */
+	private function setHttpResponseHeader($code) {
+		if (function_exists('http_response_code')) {
+			http_response_code($code);
+		} else {
+			$protocol = $_SERVER['SERVER_PROTOCOL'] ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.0';
+			$message  = "{$code} " . $this->getHttpResponseCodeMessage($code);
+			header("$protocol $message");
+		}
+	}
+
+	/**
+	 *
+	 *
+	 */
+	public function normalizeUrlPath($url) {
+		// Supprime les caractère invisibles en début et fin de chaîne
+		$result = $url;
+		// Supprime le premier caractère de la chaîne si c'est un slash '/'
+		if(substr($result, 0, 1) == '/')
+			$result = substr($result, 1, strlen($result)-1);
+		// Supprime le dernier caractère de la chaîne si c'est un slash '/'
+		if(substr($result, -1) == '/')
+			$result = substr($result, 0, strlen($result)-1);
+
+		return $result;
+	}
+
+	/**
+	 *
+	 *
+	 */
+	public function getHttpResponseCodeMessage($code) {
+		$code = (string)$code;
+		return (array_key_exists($code, $this->httpResponseCodes))? $this->httpResponseCodes[$code] : $this->httpResponseCodes['0'];
+	}
+
+
+	/**
+	 *
+	 *
+	 */
+	public function setHttpResponseCodeInfo($code) {
+		$this->setHttpResponseHeader($code);
+		$this->json->httpResponseCode        = $code;
+		$this->json->httpResponseCodeMessage = $this->getHttpResponseCodeMessage($code);
+	}
 }
